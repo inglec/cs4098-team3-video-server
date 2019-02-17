@@ -1,56 +1,63 @@
 const app = require('http').createServer();
 const io = require('socket.io')(app);
+const config = require('./config');
+const mediasoup = require('mediasoup');
+const port = config.server.port;
+const Connection = require('./connection')
+const logger = require('./logme')
 
-const { default : createLogger } = require('logging');
-const logger = createLogger('LogIndex');
+app.listen(port, () => console.log(`MediaSoup server is listening on port ${port}!`));
 
-const Room = require('./room')
-const Server = require('./server')
-
-//TODO: remove
-const dummyUser = require('./dummy-data').user;
-const dummyServerConfig = require('./dummy-data').dummyServerConfig;
-const dummyPort = require('./dummy-data').port;
-
-
-app.listen(dummyPort, () => {
-  logger.info('Server is listening on', dummyPort);
+// MediaSoup server
+const mediaServer = mediasoup.Server({
+  numWorkers: null, // Use as many CPUs as available.
+  logLevel: config.mediasoup.logLevel,
+  logTags: config.mediasoup.logTags,
+  rtcIPv4: config.mediasoup.rtcIPv4,
+  rtcIPv6: config.mediasoup.rtcIPv6,
+  rtcAnnouncedIPv4: config.mediasoup.rtcAnnouncedIPv4,
+  rtcAnnouncedIPv6: config.mediasoup.rtcAnnouncedIPv6,
+  rtcMinPort: config.mediasoup.rtcMinPort,
+  rtcMaxPort: config.mediasoup.rtcMaxPort
 });
 
-const server = new Server(dummyServerConfig);
 
-//TODO: change to actual authentication
+
+// Map of Room instances indexed by roomId.
+const rooms = new Map(); //TODO: Make this conform to some external config
+
+const getRoom = (id) => {
+  if (rooms.has(id)) {
+    return rooms.get(id);
+  } else {
+    room = mediaServer.Room(config.mediasoup.mediaCodecs);
+    rooms.set(id, room);
+    room.on('close', () => {
+      rooms.delete(id);
+    });
+    return room;
+  }
+}
+
 const authenticate = (socket) => {
-
   const user = {
-    roomId : socket.handshake.query.roomId || dummyUser.roomId,
-    peerId : socket.handshake.query.peerName || dummyUser.peerId
-  };
-
-  logger.debug('Authenticating user', user);
+    peerId : socket.handshake.query.peerName,
+    roomId : socket.handshake.query.roomId
+  }
   return Promise.resolve({socket, user});
 }
 
+// Handle socket connection and its messages
 io.on('connection', (socket) => {
 
   authenticate(socket)
     .then( ({socket, user}) => {
-      //Forward on mediasoup events if socket request checks out
-      logger.debug('Setting up socket events for', user);
-
-      //TODO: 'user' seems to be erased from scope during event firings below
-      socket.on('mediasoup-notifaction', (request, cb) => {
-        server.recieveNotification(socket, user, request, cb)
-      });
-
-      socket.on('mediasoup-request', (request, cb) => {
-        server.recieveRequest(socket, user, request, cb)
-      });
-
+      logger.info('New socket connection:', user);
+      const room = getRoom(user.roomId);
+      const connection = new Connection(socket, user, room);
     })
     .catch( (error) => {
-      logger.error(error.toString())
-      socket.disconnect(true);
+      logger.warn("Unauthorized socket connection", error.toString());
     })
 
 });

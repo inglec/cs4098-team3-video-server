@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "logging": "^3.2.0",
     "mediasoup": "^2.6.9",
     "socket.io": "^2.2.0"
   },
