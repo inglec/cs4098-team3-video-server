@@ -1,6 +1,9 @@
 const app = require('http').createServer();
 const io = require('socket.io')(app);
 
+const { default : createLogger } = require('logging');
+const logger = createLogger('LogIndex');
+
 const Room = require('./room')
 const Server = require('./server')
 
@@ -11,37 +14,42 @@ const dummyPort = require('./dummy-data').port;
 
 
 app.listen(dummyPort, () => {
-  console.log(`Server is listening on ${dummyPort}`)
+  logger.info('Server is listening on', dummyPort);
 });
 
 const server = new Server(dummyServerConfig);
 
 //TODO: change to actual authentication
 const authenticate = (socket) => {
-  console.log(dummyUser);
-  return new Promise( (resolve, reject) => { resolve(socket, dummyUser) });
-}
 
+  const user = {
+    roomId : socket.handshake.query.roomId || dummyUser.roomId,
+    peerId : socket.handshake.query.peerName || dummyUser.peerId
+  };
+
+  logger.debug('Authenticating user', user);
+  return Promise.resolve({socket, user});
+}
 
 io.on('connection', (socket) => {
 
   authenticate(socket)
-    .then( (socket, user) => {
+    .then( ({socket, user}) => {
       //Forward on mediasoup events if socket request checks out
+      logger.debug('Setting up socket events for', user);
 
       //TODO: 'user' seems to be erased from scope during event firings below
-
       socket.on('mediasoup-notifaction', (request, cb) => {
-        server.recieveNotification(socket, dummyUser, request, cb)
+        server.recieveNotification(socket, user, request, cb)
       });
 
       socket.on('mediasoup-request', (request, cb) => {
-        server.recieveRequest(socket, dummyUser, request, cb)
+        server.recieveRequest(socket, user, request, cb)
       });
 
     })
     .catch( (error) => {
-      console.log(error.toString())
+      logger.error(error.toString())
       socket.disconnect(true);
     })
 

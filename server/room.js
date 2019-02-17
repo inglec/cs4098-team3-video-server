@@ -6,8 +6,14 @@ function Room(config, msroom){
 
   this.addPeer = (socket, user) => {
 
+
+
     //should hopefully create a peer if non-exists
     const peer = this._room.getPeerByName(user.peerId);
+    this.peers.add(user.peerId, peer);
+
+    logger.info("Peer added to room:", this.id);
+    logger.info("Peer ", user.peerId);
 
     peer.on('notify', (notification) => {
       console.log('New notification for mediaPeer received:', notification);
@@ -42,7 +48,7 @@ function Room(config, msroom){
         console.log('Existing consumer closed from originator', originator);
       });
     });
-    
+
     socket.on('disconnect', () => {
       if(peer)
         peer.close()
@@ -50,7 +56,7 @@ function Room(config, msroom){
   }
 
   this.getPeer = (user) => {
-    peers.get(user.peerId);
+    return peers.get(user.peerId);
   }
 
   this.onClose = (onCloseCallback) => {

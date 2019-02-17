@@ -1,6 +1,9 @@
 const mediasoup = require('mediasoup');
 const Room = require('./room')
 
+const { default : createLogger } = require('logging');
+const logger = createLogger('LogServer');
+
 function Server(config){
 
   this.rooms = new Map();
@@ -10,39 +13,41 @@ function Server(config){
 
   //Create every room in the config
   config.rooms.forEach( (roomConfig) => {
+    logger.info('Creating room: id -', roomConfig);
     msroom = this._mediaserver.Room(config.roomcodecs)
     room = new Room(roomConfig, msroom);
     room.onClose( () => rooms.delete(room.id))
-    this.rooms.set(roomConfig.id, room);
+    this.rooms.set(roomConfig.id.toString(), room);
   });
 
+
   //Gets a room, creates it if it should be there and rejects if not
-  this.getRoom = (user) => {
+  this.getRoom = (roomId) => {
+  
+    if (this.rooms.has(roomId)) //Made and found
+    {
+      return this.rooms.get(roomId);
+    }
+    else if (this.roomIds.includes(roomId)) //Included but not made
+    {
+      msroom = this._mediaserver.Room(this.config.roomcodecs);
+      roomConfig = this.config.rooms.find( (e) => { return e.id == roomId });
+      this.rooms.set(roomId, new Room(roomConfig, msroom));
 
-      let roomId = user.roomId;
-      if (this.rooms.has(roomId)) //Made and found
-      {
-        return this.rooms.get(roomId);
-      }
-      else if (this.roomIds.includes(roomId)) //Included but not made
-      {
-        msroom = this._mediaserver.Room(this.config.roomcodecs);
-        roomConfig = this.config.rooms.find( (e) => { return e.id == roomId });
-        this.rooms.set(roomId, new Room(roomConfig, msroom));
-
-        return this.rooms.get(roomId);
-      }
-      else //Not included
-      {
-        return null;
-      }
-    };
+      return this.rooms.get(roomId);
+    }
+    else //Not included
+    {
+      return null;
+    }
+  };
 
   this.recieveRequest = (socket, user, request, cb) => {
-    console.log('furthest')
-      console.log(user);
+    logger.info("Request recieved", request, "user", user);
+    //logger.info("\tUser",user);
     const room = this.getRoom(user.roomId);
     if (room == null){
+      logger.warn("Room does not exist on this server", user);
       return cb(Error("Room does not exist on this server"));
     }
 
@@ -56,7 +61,7 @@ function Server(config){
             room.recieveRequest(request)
               .then( (response) => {
                 room.addPeer(socket, user);
-                cb(null, response);
+                return cb(null, response);
               }).catch( (error) => cb(error));
             break;
 
@@ -67,7 +72,9 @@ function Server(config){
             break;
 
           default:
-            cb(Error("Unrecognized method for target: room"))
+            const err = Error("Unrecognized method for target: room");
+            logger.error(err);
+            return cb(err);
         }
 
       break; //case 'room' end
@@ -88,6 +95,7 @@ function Server(config){
   }
 
   this.recieveNotification = (socket, user, request, cb) => {
+    logger.info("Notification Recieved ")
     const room = this.getRoom(user.roomId);
     if (room == null){
       return cb(Error("Room does not exist on this server"));
