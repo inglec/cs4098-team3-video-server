@@ -47,16 +47,20 @@ class Connection {
     return this._room;
   }
 
+  /*
+    Sets the peer object that is associated with this connection and sets
+    the event listeners required
+  */
   setPeer(peer){
-    if(!(this instanceof Connection)){
-      logger.error("'this' is a ", this.constructor.name);
-      throw Error("this not setting properly");
-    }
     this._peer = peer;
     Connection._setupPeerEventHandlers(this._peer, this._user, this._socket);
     logger.debug("Peer set for ", this.user());
   }
 
+  /*
+    Handler for all requests coming through on this connection
+    routes the requests to their correct target
+  */
   _requestHandler(request, socketCallback){
 
     switch (request.target) {
@@ -74,6 +78,9 @@ class Connection {
     }
   }
 
+  /*
+    Handler for requests with the target: 'room'
+  */
   _roomRequest(request, socketCallback){
     switch (request.method) {
 
@@ -95,6 +102,9 @@ class Connection {
     }
   }
 
+  /*
+    Handler for requests with the target: 'peer'
+  */
   _peerRequest(request, socketCallback){
     if(this.hasPeer())
     {
@@ -109,6 +119,9 @@ class Connection {
     }
   }
 
+  /*
+    Handler for all notifactions that come through on this connection
+  */
   _notificationHandler(notification){
     logger.debug('Got notification from client peer', notification);
     switch (notification.target) {
@@ -125,17 +138,24 @@ class Connection {
         break;
 
       default:
-        throw Error("Invalid notification target");
+        logger.warn("An invalid target was set for notification :", notification.target)
 
     }
   }
 
+  /*
+    Handler for when the socket disconnects
+  */
   _disconnectHandler(){
     if(this._peer){
       this._peer.close();
     }
   }
 
+  /*
+    Helper function to set all the event handlers specifically for this peer on
+    this connection
+  */
   static _setupPeerEventHandlers(peer, user, socket){
     logger.debug("Setting up callbacks");
 
