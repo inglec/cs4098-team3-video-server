@@ -1,200 +1,175 @@
-const logger = require('./logme')
+const { default: createLogger } = require('logging');
+
+const logger = createLogger('connection');
 
 class Connection {
+  constructor(socket, user, room) {
+    this.peer = null;
+    this.room = room;
+    this.socket = socket;
+    this.user = {
+      peerId: socket.handshake.query.peerName,
+      roomId: socket.handshake.query.roomId,
+    };
 
-  constructor(socket, user, room){
-    this._socket = socket;
-    this._room = room;
-    this._peer = null;
-    this._user = {
-      peerId : socket.handshake.query.peerName,
-      roomId : socket.handshake.query.roomId,
-    }
+    this.disconnectHandler = this.disconnectHandler.bind(this);
+    this.notificationHandler = this.notificationHandler.bind(this);
+    this.peerRequest = this.peerRequest.bind(this);
+    this.requestHandler = this.requestHandler.bind(this);
+    this.roomRequest = this.roomRequest.bind(this);
 
-    //The source of hours of woes, slain
-    this._requestHandler = this._requestHandler.bind(this);
-    this._notificationHandler = this._notificationHandler.bind(this);
-    this._disconnectHandler = this._disconnectHandler.bind(this);
-    this._roomRequest = this._roomRequest.bind(this);
-    this._peerRequest = this._peerRequest.bind(this);
-
-    this._socket.on('mediasoup-request', this._requestHandler);
-    this._socket.on('mediasoup-notification', this._notificationHandler);
-    this._socket.on('disconnect', this._disconnectHandler);
+    this.socket.on('disconnect', this.disconnectHandler);
+    this.socket.on('mediasoup-notification', this.notificationHandler);
+    this.socket.on('mediasoup-request', this.requestHandler);
   }
 
-  user(){
-    return this._user;
+  getUser() {
+    return this.user;
   }
 
-  peer(){
-    return this._peer;
+  getPeer() {
+    return this.peer;
   }
 
-  hasPeer(){
-    return (this._peer != null);
+  hasPeer() {
+    return this.peer !== null;
   }
 
-  roomId(){
-    return this._user.roomId;
+  getRoomId() {
+    return this.user.roomId;
   }
 
-  peerId(){
-    return this._user.peerId;
+  getPeerId() {
+    return this.user.peerId;
   }
 
-  room(){
-    return this._room;
+  getRoom() {
+    return this.room;
   }
 
-  /*
-    Sets the peer object that is associated with this connection and sets
-    the event listeners required
-  */
-  setPeer(peer){
-    this._peer = peer;
-    Connection._setupPeerEventHandlers(this._peer, this._user, this._socket);
-    logger.debug("Peer set for ", this.user());
+  /**
+   * Sets the peer object that is associated with this connection and sets the event listeners
+   * required.
+   */
+  setPeer(peer) {
+    this.peer = peer;
+    this.constructor.setupPeerEventHandlers(this.peer, this.user, this.socket);
+
+    logger.debug('Peer set for', this.user);
   }
 
-  /*
-    Handler for all requests coming through on this connection
-    routes the requests to their correct target
-  */
-  _requestHandler(request, socketCallback){
-
+  /**
+   * Handler for all requests coming through on this connection routes the requests to their correct
+   * target.
+   */
+  requestHandler(request, socketCallback) {
     switch (request.target) {
-
       case 'room':
-        this._roomRequest(request, socketCallback); break;
-
-      case 'peer':
-        this._peerRequest(request, socketCallback); break;
-
-      default:
-        const err = Error("Unknown request target", request.target);
-        logger.error('Err', err);
-        socketCallback(err.toString());
-    }
-  }
-
-  /*
-    Handler for requests with the target: 'room'
-  */
-  _roomRequest(request, socketCallback){
-    switch (request.method) {
-
-      case 'join':
-        this.room().receiveRequest(request)
-          .then((response) => {
-            this.setPeer(room.getPeerByName(this.peerId()));
-            socketCallback(null, response);
-          })
-          .catch((error) => {
-            socketCallback(error.toString())
-          });
+        this.roomRequest(request, socketCallback);
         break;
-
-      default:
-        this.room().receiveRequest(request)
-          .then((response) => socketCallback(null, response))
-          .catch((error) => socketCallback(error.toString()));
+      case 'peer':
+        this.peerRequest(request, socketCallback);
+        break;
+      default: {
+        const error = `Unknown request target ${request.target}`;
+        socketCallback(error);
+        logger.error(error);
+      }
     }
   }
 
-  /*
-    Handler for requests with the target: 'peer'
-  */
-  _peerRequest(request, socketCallback){
-    if(this.hasPeer())
-    {
-      this.peer().receiveRequest(request)
-        .then((response) => socketCallback(null, response))
-        .catch((error) => socketCallback(error.toString()));
+  /**
+   * Handler for requests with the target: 'room'.
+   */
+  roomRequest(request, socketCallback) {
+    if (request.method === 'join') {
+      this.room.receiveRequest(request)
+        .then((response) => {
+          const peer = this.room.getPeerByName(this.peerId);
+          this.setPeer(peer);
+          socketCallback(null, response);
+        })
+        .catch(error => socketCallback(error.toString()));
+    } else {
+      this.room.receiveRequest(request)
+        .then(response => socketCallback(null, response))
+        .catch(error => socketCallback(error.toString()));
     }
-    else
-    {
+  }
+
+  /**
+   * Handler for requests with the target: 'peer'.
+   */
+  peerRequest(request, socketCallback) {
+    if (this.hasPeer()) {
+      this.peer.receiveRequest(request)
+        .then(response => socketCallback(null, response))
+        .catch(error => socketCallback(error.toString()));
+    } else {
       logger.warn('Cannot handle mediaSoup request, no mediaSoup Peer');
-      return;
     }
   }
 
-  /*
-    Handler for all notifactions that come through on this connection
-  */
-  _notificationHandler(notification){
+  /**
+   * Handler for all notifactions that come through on this connection.
+   */
+  notificationHandler(notification) {
     logger.debug('Got notification from client peer', notification);
+
     switch (notification.target) {
       case 'peer':
-        if (this.hasPeer())
-        {
+        if (this.hasPeer()) {
           this.peer().receiveNotification(notification);
-        }
-        else
-        {
+        } else {
           logger.warn('Cannot handle mediaSoup notification, no mediaSoup Peer');
-          return;
         }
         break;
-
       default:
-        logger.warn("An invalid target was set for notification :", notification.target)
-
+        logger.warn('An invalid target was set for notification:', notification.target);
     }
   }
 
-  /*
-    Handler for when the socket disconnects
-  */
-  _disconnectHandler(){
-    if(this._peer){
-      this._peer.close();
+  /**
+   * Handler for when the socket disconnects.
+   */
+  disconnectHandler() {
+    if (this.peer) {
+      this.peer.close();
     }
   }
 
-  /*
-    Helper function to set all the event handlers specifically for this peer on
-    this connection
-  */
-  static _setupPeerEventHandlers(peer, user, socket){
-    logger.debug("Setting up callbacks");
+  /**
+   * Helper function to set all the event handlers specifically for this peer on this connection.
+   */
+  static setupPeerEventHandlers(peer, user, socket) {
+    logger.debug('Setting up callbacks');
 
     peer.on('notify', (notification) => {
-      logger.info('Notifcation recieved for :', user, " method: "
-        , notification.method);
+      logger.info('Notification recieved for:', user, ' method:', notification.method);
       socket.emit('mediasoup-notification', notification);
     });
 
     peer.on('newtransport', (transport) => {
       logger.info('New peer transport:', transport.direction, user);
-      transport.on('close', (originator) => {
-        logger.info('Transport closed:', transport.direction, user);
-      });
+      transport.on('close', () => logger.info('Transport closed:', transport.direction, user));
     });
 
     peer.on('newproducer', (producer) => {
       logger.info('New media producer:', producer.kind, producer.peer.name);
-      producer.on('close', (originator) => {
-          logger.info('Producer closed:', producer.kind, user);
-      });
+      producer.on('close', () => logger.info('Producer closed:', producer.kind, user));
     });
 
     peer.on('newconsumer', (consumer) => {
       logger.info('New media consumer:', consumer.kind, consumer.peer.name);
-      consumer.on('close', (originator) => {
-        logger.info('Consumer closed:', consumer.kind);
-      });
+      consumer.on('close', () => logger.info('Consumer closed:', consumer.kind));
     });
 
     // Also handle already existing Consumers.
     peer.consumers.forEach((consumer) => {
       logger.info('Existing consumer:', consumer.kind, consumer.peer.name);
-      consumer.on('close', (originator) => {
-        logger.info('Existing consumer closed:', consumer.kind);
-      });
+      consumer.on('close', () => logger.info('Existing consumer closed:', consumer.kind));
     });
   }
-
 }
 
 module.exports = Connection;
