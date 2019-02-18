@@ -1,0 +1,17 @@
+{
+  "name": "server",
+  "author": "Ciarán Ingle, Eddie Bergman, Alex Smirnov, Conal Cosgrove, Conor Nevin, Christopher Meaney",
+  "dependencies": {
+    "logging": "^3.2.0",
+    "mediasoup": "^2.6.9",
+    "socket.io": "^2.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^5.14.0",
+    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-plugin-import": "^2.16.0"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  }
+}
