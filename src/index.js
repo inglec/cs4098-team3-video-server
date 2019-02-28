@@ -32,26 +32,22 @@ const mediaServer = mediasoup.Server({
 });
 
 const room = mediaServer.Room(config.mediasoup.mediaCodecs);
-const getRoom = (user) => {
-  return room;
-};
+const getRoom = user => room;
 
 const authenticate = (socket) => {
   const user = {
     id: 0,
-    name: socket.handshake.query.username,
+    uid: socket.handshake.query.uid,
     token: socket.handshake.query.token,
   };
 
   return Promise.resolve({ socket, user });
 };
-
 function main() {
   // Handle socket connection and its messages.
   io.on('connection', (socket) => {
     authenticate(socket)
       .then(({ socket, user }) => {
-
         // TODO: Use connection to do something?
         const userroom = getRoom(user);
         logger.info('New socket connection:', user);

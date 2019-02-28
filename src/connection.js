@@ -1,6 +1,7 @@
 const { default: createLogger } = require('logging');
 
 const logger = createLogger('connection');
+// request structure: https://github.com/versatica/mediasoup-client/blob/v2/MEDIASOUP_PROTOCOL.md
 
 class Connection {
   constructor(socket, user, room) {
@@ -42,7 +43,7 @@ class Connection {
   setPeer(peer) {
     this.peer = peer;
     this.setupPeerEventHandlers();
-    logger.debug('Peer set for', this.user);
+    logger.debug('Created a Peer for', this.user);
   }
 
   /**
@@ -67,11 +68,12 @@ class Connection {
    * Handler for requests with the target: 'room'.
    */
   roomRequest(request, socketCallback) {
-    logger.debug('REQ:', request.method, request.peerName);
+    logger.debug('Request recieved :', request.method, 'from', request.peerName);
     if (request.method === 'join') {
       this.room.receiveRequest(request)
         .then((response) => {
-          const peer = this.room.getPeerByName(this.user.name);
+          // Should hopefully see request.peerName == this.user.uid
+          const peer = this.room.getPeerByName(this.user.uid);
           this.setPeer(peer);
           socketCallback(null, response);
         })
