@@ -34,6 +34,9 @@ const mediaServer = mediasoup.Server({
 const room = mediaServer.Room(config.mediasoup.mediaCodecs);
 const getRoom = user => room;
 
+mediaServer.on('close', () => logger.warn('Mediaserver has closed'));
+room.on('close', () => logger.warn('Room has closed'));
+
 const authenticate = (socket) => {
   const user = {
     id: 0,
