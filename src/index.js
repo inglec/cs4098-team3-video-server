@@ -6,7 +6,7 @@ const mediasoup = require('mediasoup');
 const socketio = require('socket.io');
 
 // Local imports.
-const config = require('./local-config');
+const config = require('./remote-config');
 const Connection = require('./connection');
 
 // Globals.
