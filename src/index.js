@@ -6,7 +6,7 @@ const mediasoup = require('mediasoup');
 const socketio = require('socket.io');
 
 // Local imports.
-const config = require('./config');
+const config = require('./remote-config');
 const Connection = require('./connection');
 
 // Globals.
@@ -14,7 +14,6 @@ const app = http.createServer();
 const io = socketio(app);
 const logger = createLogger('Server');
 const { port } = config.server;
-const rooms = {}; // TODO: Make this conform to some external config.
 
 // MediaSoup server
 const mediaServer = mediasoup.Server({
@@ -32,37 +31,30 @@ const mediaServer = mediasoup.Server({
   numWorkers: null, // Use as many CPUs as available.
 });
 
-const getRoom = (id) => {
-  if (id in rooms) {
-    return rooms[id];
-  }
+const room = mediaServer.Room(config.mediasoup.mediaCodecs);
+const getRoom = user => room;
 
-  const room = mediaServer.Room(config.mediasoup.mediaCodecs);
-  rooms[id] = room;
-  room.on('close', () => delete rooms[id]);
-
-  return room;
-};
+mediaServer.on('close', () => logger.warn('Mediaserver has closed'));
+room.on('close', () => logger.warn('Room has closed'));
 
 const authenticate = (socket) => {
   const user = {
-    peerId: socket.handshake.query.peerName,
-    roomId: socket.handshake.query.roomId,
+    id: 0,
+    uid: socket.handshake.query.uid,
+    token: socket.handshake.query.token,
   };
 
   return Promise.resolve({ socket, user });
 };
-
 function main() {
   // Handle socket connection and its messages.
   io.on('connection', (socket) => {
     authenticate(socket)
       .then(({ socket, user }) => {
-        logger.info('New socket connection:', user);
-
         // TODO: Use connection to do something?
-        const room = getRoom(user.roomId);
-        const connection = new Connection(socket, user, room);
+        const userroom = getRoom(user);
+        logger.info('New socket connection:', user);
+        const connection = new Connection(socket, user, userroom);
       })
       .catch(error => logger.warn('Unauthorized socket connection', error.toString()));
   });
