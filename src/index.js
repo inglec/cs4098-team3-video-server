@@ -6,14 +6,22 @@ const mediasoup = require('mediasoup');
 const socketio = require('socket.io');
 
 // Local imports.
-const config = require('./local-config');
+const configs = require('./config');
 const Connection = require('./connection');
+
+// Change config being used if in production
+let config = configs.local;
+if (process.env.NODE_ENV === 'production') {
+  config = configs.remote;
+}
+console.log(config);
 
 // Globals.
 const app = http.createServer();
 const io = socketio(app);
 const logger = createLogger('Server');
-const { port } = config.server;
+const { port } = config;
+
 
 // MediaSoup server
 const mediaServer = mediasoup.Server({
