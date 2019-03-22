@@ -7,7 +7,6 @@ const socketio = require('socket.io');
 // Local imports.
 const {
   ROOM_CLOSE,
-  SERVER_CLOSE,
   SOCKET_CONNECTION,
 } = require('./events');
 
@@ -46,11 +45,6 @@ function main() {
     authenticate(socket)
       .then(user => room.addUser(user))
       .catch((error) => {
-        try {
-          throw error;
-        }catch(e){
-          console.log(e);
-        }
         logger.error(error);
         socket.emit('exception', error);
       });

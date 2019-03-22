@@ -40,7 +40,9 @@ class User {
 
   setPeer(peer) {
     this.peer = peer;
-    peer.on(NOTIFY, notification => this.socket.emit(MEDIASOUP_NOTIFICATION, notification));
+    peer.on(NOTIFY, (notification) => {
+      this.socket.emit(MEDIASOUP_NOTIFICATION, notification);
+    });
   }
 
   hasPeer() {

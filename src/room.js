@@ -137,14 +137,15 @@ class Room {
 
     const messageNotifcation = {
       target: 'peer',
+      method: 'chat-message',
       notification: true,
       appData: notification.appData,
     };
 
     Object.values(this.users).forEach((user) => {
-      if (user.hasPeer()) {
+      if (user.hasPeer() && user.uid !== sender.uid) {
         logger.info('Sending message to peer', notification.appData, user.uid);
-        user.peer.receiveNotification(messageNotifcation);
+        user.socket.emit(MEDIASOUP_NOTIFICATION, messageNotifcation);
       }
     });
   }
