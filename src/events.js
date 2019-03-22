@@ -1,0 +1,15 @@
+module.exports = {
+  ROOM_CLOSE: 'close',
+  SERVER_CLOSE: 'close',
+  SOCKET_CONNECTION: 'connection',
+  SOCKET_DISCONNECT: 'disconnect',
+  MEDIASOUP_NOTIFICATION: 'mediasoup-notification',
+  MEDIASOUP_REQUEST: 'mediasoup-request',
+  NOTIFY: 'notify',
+  NEW_TRANSPORT: 'newtransport',
+  NEW_PRODUCER: 'newproducer',
+  NEW_CONSUMER: 'newconsumer',
+  CONSUMER_CLOSE: 'close',
+  PRODUCER_CLOSE: 'close',
+  TRANSPORT_CLOSE: 'close',
+};

@@ -1,70 +1,59 @@
 // Node modules.
 const http = require('http');
-const _ = require('lodash');
 const { default: createLogger } = require('logging');
 const mediasoup = require('mediasoup');
 const socketio = require('socket.io');
 
 // Local imports.
-const configs = require('./config');
-const Connection = require('./connection');
+const {
+  ROOM_CLOSE,
+  SERVER_CLOSE,
+  SOCKET_CONNECTION,
+} = require('./events');
 
-// Change config being used if in production
-let config = configs.local;
-if (process.env.NODE_ENV === 'production') {
-  config = configs.remote;
-}
-console.log(config);
+const configs = require('./config');
+const Room = require('./room');
+const User = require('./user');
+
+const config = process.env.NODE_ENV === 'production'
+  ? configs.remote
+  : configs.local;
 
 // Globals.
 const app = http.createServer();
 const io = socketio(app);
 const logger = createLogger('Server');
 const { port } = config;
-
-
-// MediaSoup server
-const mediaServer = mediasoup.Server({
-  // Copy the following fields from the mediasoup config.
-  ..._.pick(config.mediasoup, [
-    'logLevel',
-    'logTags',
-    'rtcAnnouncedIPv4',
-    'rtcAnnouncedIPv6',
-    'rtcIPv4',
-    'rtcIPv6',
-    'rtcMaxPort',
-    'rtcMinPort',
-  ]),
-  numWorkers: null, // Use as many CPUs as available.
-});
-
-const room = mediaServer.Room(config.mediasoup.mediaCodecs);
-const getRoom = user => room;
-
-mediaServer.on('close', () => logger.warn('Mediaserver has closed'));
-room.on('close', () => logger.warn('Room has closed'));
+const mediaServer = mediasoup.Server(config.mediasoupServer);
 
 const authenticate = (socket) => {
-  const user = {
-    id: 0,
-    uid: socket.handshake.query.uid,
-    token: socket.handshake.query.token,
-  };
-
-  return Promise.resolve({ socket, user });
+  const user = new User(
+    socket.handshake.query.uid,
+    socket.handshake.query.token,
+    socket,
+  );
+  return Promise.resolve(user);
 };
+
+// TODO: Get an actual value from somewhere or generate one
+const sessionID = 'testID';
+const room = new Room(sessionID, mediaServer, config.mediaCodecs);
+room.on(ROOM_CLOSE, () => logger.warn('Room has closed'));
+
 function main() {
   // Handle socket connection and its messages.
-  io.on('connection', (socket) => {
+  io.on(SOCKET_CONNECTION, (socket) => {
     authenticate(socket)
-      .then(({ socket, user }) => {
-        // TODO: Use connection to do something?
-        const userroom = getRoom(user);
-        logger.info('New socket connection:', user);
-        const connection = new Connection(socket, user, userroom);
-      })
-      .catch(error => logger.warn('Unauthorized socket connection', error.toString()));
+      .then(user => room.addUser(user))
+      .catch((error) => {
+        try {
+          throw error;
+        }catch(e){
+          console.log(e);
+        }
+        logger.error(error);
+        socket.emit('exception', error);
+      });
   });
 
   app.listen(port, () => logger.info('MediaSoup server is listening on port', port));
