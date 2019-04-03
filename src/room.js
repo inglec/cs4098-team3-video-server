@@ -11,13 +11,13 @@ const logger = createLogger('Server');
 
 /* eslint-disable class-methods-use-this */
 class Room {
-  constructor(sessionID, msServer, mediaCodecs) {
+  constructor(sessionId, msServer, mediaCodecs) {
     this.users = {}; // map user.uid => User
     this.listeners = {
       [ROOM_CLOSE]: [],
     };
 
-    this.sessionID = sessionID;
+    this.sessionId = sessionId;
     this.msRoom = msServer.Room(mediaCodecs);
     this.msRoom.on(ROOM_CLOSE, () => {
       logger.warn('Room has closed');
@@ -111,6 +111,7 @@ class Room {
           .then((response) => {
             const senderPeer = this.msRoom.getPeerByName(sender.uid);
             sender.setPeer(senderPeer);
+            response.sessionId = this.sessionId;
             socketCallback(null, response);
           })
           .catch((error) => {

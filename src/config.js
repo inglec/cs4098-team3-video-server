@@ -1,8 +1,5 @@
-const remotePublicIP = '34.255.199.16';
-const remotePrivateIP = '172.31.28.152';
-
 const baseConfig = {
-  port: 8081,
+  defaultPort: 8081,
 
   mediasoupServer: {
     // Mediasoup Server settings.
@@ -34,21 +31,4 @@ const baseConfig = {
   ],
 };
 
-const localConfig = {
-  ...baseConfig,
-};
-
-const remoteConfig = {
-  ...baseConfig,
-  port: 48081,
-  mediasoup: {
-    ...baseConfig.mediasoup,
-    rtcIPv4: remotePrivateIP,
-    rtcAnnouncedIPv4: remotePublicIP,
-  },
-};
-
-module.exports = {
-  local: localConfig,
-  remote: remoteConfig,
-};
+module.exports = baseConfig;
