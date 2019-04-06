@@ -26,14 +26,18 @@ class Room {
   }
 
   addUser(user) {
-    this.users[user.uid] = user;
-    user.on(SOCKET_DISCONNECT, uid => delete this.users[uid]);
-    user.on(MEDIASOUP_NOTIFICATION, ({ notification, sender }) => {
-      this.onNotification({ notification, sender });
-    });
-    user.on(MEDIASOUP_REQUEST, ({ request, socketCallback, sender }) => {
-      this.onRequest({ request, socketCallback, sender });
-    });
+    if (this.users[user.uid]) {
+      throw Error(`User ${user.uid} already room participant`);
+    } else {
+      this.users[user.uid] = user;
+      user.on(SOCKET_DISCONNECT, uid => delete this.users[uid]);
+      user.on(MEDIASOUP_NOTIFICATION, ({ notification, sender }) => {
+        this.onNotification({ notification, sender });
+      });
+      user.on(MEDIASOUP_REQUEST, ({ request, socketCallback, sender }) => {
+        this.onRequest({ request, socketCallback, sender });
+      });
+    }
   }
 
   onNotification({ notification, sender }) {
