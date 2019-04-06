@@ -5,7 +5,8 @@
     "lodash": "^4.17.11",
     "logging": "^3.2.0",
     "mediasoup": "^2.6.9",
-    "socket.io": "^2.2.0"
+    "socket.io": "^2.2.0",
+    "uuid": "^3.3.2"
   },
   "devDependencies": {
     "eslint": "^5.14.0",
@@ -13,6 +14,7 @@
     "eslint-plugin-import": "^2.16.0"
   },
   "scripts": {
-    "start": "node src/index.js"
+    "start": "NODE_ENV=development node src/index.js",
+    "start-prod": "NODE_ENV=production ANNOUNCED_IP=34.255.199.16 PRIVATE_IP=172.31.28.152 PORT=48081 node src/index.js"
   }
 }
