@@ -1,4 +1,4 @@
-# TB or not TB: Multipoint Control Unit Server
+# CS4098 Team 3: Multipoint Control Unit Server
 
 This server hosts video sessions and allows authenticated users to initiate connections.
 
