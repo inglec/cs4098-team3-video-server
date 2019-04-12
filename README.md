@@ -3,6 +3,5 @@
 This server hosts video sessions and allows authenticated users to initiate connections.
 
 Related repositories:
-* [Client](https://github.com/inglec/tb-or-not-tb-client)
-* [Load Balancer](https://github.com/inglec/tb-or-not-tb-load-balancer)
-* [API Server](https://github.com/inglec/tb-or-not-tb-api-server)
+* [Client](https://github.com/inglec/cs4098-team3-web-app)
+* [API Server](https://github.com/inglec/cs4098-team3-api-server)
